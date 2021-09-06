@@ -1,0 +1,43 @@
+{{define "blog"}}
+    {{template "header"}}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                {{range $index, $element := .Posts}}
+                    <div class="row justify-content-center mt-3">
+                        <div class="col-md-10">
+                            <div class="card">
+                                <div class="card-body">
+                                    {{with $element}}
+                                        <h5 class="card-title">{{.Title}}</h5>
+                                        <p class="card-text">{{parsedate .CreateAt}}</p>
+                                    {{end}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {{else}}
+                    <h1>Anda Tidak Punya Hobby</h1>
+                {{end}}
+            </div>
+            <div class="col-md-4 offset-1">
+                <form action="/blog/create" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="inputTitle" class="form-label">Title</label>
+                        <input type="text" name="title" class="form-control" autocomplete="off" id="inputTitle">
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputBody" class="form-label">Body</label>
+                        <input type="text" name="body" class="form-control" autocomplete="off" id="inputBody">
+                    </div>
+                    <div class="mb-3">
+                        <label for="formFile" class="form-label">Image</label>
+                        <input name="image" class="form-control" type="file" id="formFile">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {{template "footer"}}
+{{end}}
