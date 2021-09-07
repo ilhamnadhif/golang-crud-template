@@ -14,7 +14,7 @@
                                         </a>
                                         <p class="card-text">{{parsedate .CreateAt}}</p>
                                         <a href="/delete/{{.Id}}" type="button" class="btn btn-danger">Delete</a>
-                                        <button type="button" class="btn btn-warning">Edit</button>
+                                        <a href="/edit/{{.Id}}" type="button" class="btn btn-warning">Edit</a>
                                     {{end}}
                                 </div>
                             </div>

@@ -82,8 +82,13 @@ func (repository *postRepositoryImpl) FindAll(ctx context.Context) ([]entity.Pos
 	return posts, nil
 }
 
-func (repository *postRepositoryImpl) UpdateById(ctx context.Context, id int32, comment entity.Post) (entity.Post, error) {
-	panic("implement me")
+func (repository *postRepositoryImpl) UpdateById(ctx context.Context, id int32, post entity.Post) (entity.Post, error) {
+	script := "UPDATE posts SET title = ?, slug = ?, body = ? WHERE id = ?"
+	_, err := repository.DB.ExecContext(ctx, script, post.Title, post.Slug, post.Body, id)
+	if err != nil {
+		return post, err
+	}
+	return post, nil
 }
 
 func (repository *postRepositoryImpl) DeleteById(ctx context.Context, id int32) (string, error) {

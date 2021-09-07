@@ -98,6 +98,39 @@ var DeleteBlog = func(writer http.ResponseWriter, request *http.Request, params 
 	http.Redirect(writer, request, "/blog", 301)
 }
 
+var FormEdit = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+	blogId := params.ByName("id")
+	id, _ := strconv.Atoi(blogId)
+	postRepository := repository.NewPostRepository(db.GetConnection())
+	ctx := context.Background()
+	post, err := postRepository.FindById(ctx, int32(id))
+	helper.ErrorHandling(err)
+	MyTemplate.ExecuteTemplate(writer, "formEdit", map[string]interface{}{
+		"Post": post,
+	})
+}
+
+var UpdateBlogById = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+	id := request.PostFormValue("id")
+	idBlog, _ := strconv.Atoi(id)
+	title := request.PostFormValue("title")
+	body := request.PostFormValue("body")
+	slug := strings.Join(strings.Split(strings.ToLower(title), " "), "-")
+
+	postRepository := repository.NewPostRepository(db.GetConnection())
+	ctx := context.Background()
+	result, err := postRepository.FindById(ctx, int32(idBlog))
+	helper.ErrorHandling(err)
+	var post entity.Post = entity.Post{
+		Title: title,
+		Slug:  slug,
+		Body:  body,
+	}
+	_, error := postRepository.UpdateById(ctx, result.Id, post)
+	helper.ErrorHandling(error)
+	http.Redirect(writer, request, "/blog", 301)
+}
+
 ////go:embed images
 //var images embed.FS
 
@@ -106,10 +139,12 @@ func main() {
 	router.ServeFiles("/images/*filepath", http.Dir("./images/"))
 	router.GET("/", Home)
 	router.GET("/blog", Blog)
-	router.GET("/blog/:slug/", DetailBlog)
+	router.GET("/blog/:slug", DetailBlog)
+	router.GET("/edit/:id", FormEdit)
 
 	router.POST("/create", CreateBlog)
 	router.GET("/delete/:id", DeleteBlog)
+	router.POST("/update", UpdateBlogById)
 
 	server := http.Server{
 		Addr:    "localhost:8080",

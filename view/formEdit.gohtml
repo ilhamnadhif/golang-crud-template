@@ -1,0 +1,27 @@
+{{define "formEdit"}}
+    {{template "header"}}
+    {{with .Post}}
+        <div class="container">
+            <h1>Edit Postingan ID {{.Id}}</h1>
+            <di class="row">
+                <div class="col-md-5">
+                    <form action="/update" method="post" enctype="multipart/form-data">
+                        <input type="text" name="id" value="{{.Id}}" hidden>
+                        <div class="mb-3">
+                            <label for="inputTitle" class="form-label">Title</label>
+                            <input type="text" value="{{.Title}}" name="title" class="form-control" autocomplete="off"
+                                   id="inputTitle">
+                        </div>
+                        <div class="mb-3">
+                            <label for="inputBody" class="form-label">Body</label>
+                            <input type="text" value="{{.Body}}" name="body" class="form-control" autocomplete="off"
+                                   id="inputBody">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </form>
+                </div>
+            </di>
+        </div>
+    {{end}}
+    {{template "footer"}}
+{{end}}
