@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/julienschmidt/httprouter"
 	"golang-crud-template/db"
 	"golang-crud-template/db/entity"
 	"golang-crud-template/db/repository"
@@ -13,6 +14,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -28,11 +32,11 @@ var MyTemplate = template.Must(template.New("").Funcs(map[string]interface{}{
 	},
 }).ParseFS(templates, "view/*.gohtml"))
 
-var Home = func(writer http.ResponseWriter, request *http.Request) {
+var Home = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	MyTemplate.ExecuteTemplate(writer, "index", nil)
 }
 
-var Blog = func(writer http.ResponseWriter, request *http.Request) {
+var Blog = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	postRepository := repository.NewPostRepository(db.GetConnection())
 	ctx := context.Background()
 
@@ -44,18 +48,17 @@ var Blog = func(writer http.ResponseWriter, request *http.Request) {
 	})
 }
 
-var CreateBlog = func(writer http.ResponseWriter, request *http.Request) {
-	defer http.Redirect(writer, request, "/blog", http.StatusTemporaryRedirect)
+var CreateBlog = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	title := request.PostFormValue("title")
 	body := request.PostFormValue("body")
 	// image
 	file, fileHeader, err := request.FormFile("image")
 	helper.ErrorHandling(err)
-	fileDestination, err := os.Create("./images/" + fileHeader.Filename)
+	imgName := strings.Join(strings.Split(fileHeader.Filename, " "), "_")
+	fileDestination, err := os.Create("./images/" + imgName)
 	helper.ErrorHandling(err)
 	_, err = io.Copy(fileDestination, file)
 	helper.ErrorHandling(err)
-	imgName := fileHeader.Filename
 
 	slug := strings.Join(strings.Split(strings.ToLower(title), " "), "-")
 
@@ -70,21 +73,58 @@ var CreateBlog = func(writer http.ResponseWriter, request *http.Request) {
 	result, err := postRepository.Insert(ctx, post)
 	helper.ErrorHandling(err)
 	fmt.Println(result)
-}
-var DetailBlog = func(writer http.ResponseWriter, request *http.Request) {
-	MyTemplate.ExecuteTemplate(writer, "detail", nil)
+	http.Redirect(writer, request, "/blog", 301)
 }
 
+var DetailBlog = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+	slug := params.ByName("slug")
+	postRepository := repository.NewPostRepository(db.GetConnection())
+	ctx := context.Background()
+	post, err := postRepository.FindBySlug(ctx, slug)
+	helper.ErrorHandling(err)
+	MyTemplate.ExecuteTemplate(writer, "detail", post)
+}
+
+var DeleteBlog = func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+	blogId := params.ByName("id")
+	id, _ := strconv.Atoi(blogId)
+	postRepository := repository.NewPostRepository(db.GetConnection())
+	ctx := context.Background()
+	post, err := postRepository.FindById(ctx, int32(id))
+	helper.ErrorHandling(err)
+	_, error := postRepository.DeleteById(ctx, post.Id)
+	helper.ErrorHandling(error)
+	RemoveImage(post.Image)
+	http.Redirect(writer, request, "/blog", 301)
+}
+
+////go:embed images
+//var images embed.FS
+
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", Home)
-	mux.HandleFunc("/blog/", Blog)
-	mux.HandleFunc("/blog/create", CreateBlog)
-	//mux.HandleFunc("/blog/?slug=", DetailBlog)
+	router := httprouter.New()
+	router.ServeFiles("/images/*filepath", http.Dir("./images/"))
+	router.GET("/", Home)
+	router.GET("/blog", Blog)
+	router.GET("/blog/:slug/", DetailBlog)
+
+	router.POST("/create", CreateBlog)
+	router.GET("/delete/:id", DeleteBlog)
+
 	server := http.Server{
 		Addr:    "localhost:8080",
-		Handler: mux,
+		Handler: router,
 	}
 	err := server.ListenAndServe()
 	helper.ErrorHandling(err)
+}
+
+func RemoveImage(image string) {
+	_, b, _, _ := runtime.Caller(0)
+	d := path.Join(path.Dir(b))
+	directory := filepath.Join(d, "./images")
+	e := os.Remove(directory + "/" + image)
+	if e != nil {
+		panic(e)
+	}
 }

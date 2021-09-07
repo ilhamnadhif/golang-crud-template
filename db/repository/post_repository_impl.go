@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"golang-crud-template/db/entity"
+	"strconv"
 )
 
 type postRepositoryImpl struct {
@@ -29,12 +31,38 @@ func (repository *postRepositoryImpl) Insert(ctx context.Context, post entity.Po
 }
 
 func (repository *postRepositoryImpl) FindById(ctx context.Context, id int32) (entity.Post, error) {
-	panic("asd")
-	//script := "SELECT id, title, slug, body, image, created_at FROM posts"
-	//rows, err := repository.DB.QueryContext(ctx, script)
-	//if err != nil {
-	//	return pos, err
-	//}
+	script := "SELECT id, title, slug, body, image, created_at FROM posts WHERE id = ? LIMIT 1"
+	rows, err := repository.DB.QueryContext(ctx, script, id)
+	var post entity.Post
+	if err != nil {
+		return post, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		// ada
+		rows.Scan(&post.Id, &post.Title, &post.Slug, &post.Body, &post.Image, &post.CreateAt)
+		return post, nil
+	} else {
+		// nggak ada
+		return post, errors.New(("Id " + strconv.Itoa(int(id)) + " Not Found"))
+	}
+}
+func (repository *postRepositoryImpl) FindBySlug(ctx context.Context, slug string) (entity.Post, error) {
+	script := "SELECT id, title, slug, body, image, created_at FROM posts WHERE slug = ? LIMIT 1"
+	rows, err := repository.DB.QueryContext(ctx, script, slug)
+	var post entity.Post
+	if err != nil {
+		return post, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		// ada
+		rows.Scan(&post.Id, &post.Title, &post.Slug, &post.Body, &post.Image, &post.CreateAt)
+		return post, nil
+	} else {
+		// nggak ada
+		return post, errors.New(("Slug " + slug + " Not Found"))
+	}
 }
 
 func (repository *postRepositoryImpl) FindAll(ctx context.Context) ([]entity.Post, error) {
@@ -59,5 +87,10 @@ func (repository *postRepositoryImpl) UpdateById(ctx context.Context, id int32, 
 }
 
 func (repository *postRepositoryImpl) DeleteById(ctx context.Context, id int32) (string, error) {
-	panic("implement me")
+	script := "DELETE FROM posts WHERE id = ?"
+	_, err := repository.DB.ExecContext(ctx, script, id)
+	if err != nil {
+		return "Id " + strconv.Itoa(int(id)) + " Gagal Dihapus", err
+	}
+	return "Id " + strconv.Itoa(int(id)) + " Berhasil Dihapus", nil
 }
